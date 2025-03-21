@@ -5,7 +5,7 @@ import torch.nn.utils.spectral_norm as spectral_norm
 
 class ResidualBlock(nn.Module):
     """
-    Residual block for the Generator
+    Residual block for the Generator, with safeguards for small spatial dimensions
     """
     def __init__(self, in_channels, use_spectral_norm=False):
         super(ResidualBlock, self).__init__()
@@ -18,20 +18,30 @@ class ResidualBlock(nn.Module):
             conv1 = nn.Conv2d(in_channels, in_channels, kernel_size=3, padding=1, bias=False)
             conv2 = nn.Conv2d(in_channels, in_channels, kernel_size=3, padding=1, bias=False)
         
-        # Define the main path
-        self.main_path = nn.Sequential(
-            conv1,
-            nn.InstanceNorm2d(in_channels),
-            nn.ReLU(inplace=True),
-            conv2,
-            nn.InstanceNorm2d(in_channels)
-        )
+        # Use BatchNorm2d instead of InstanceNorm2d for 1x1 spatial dimensions
+        self.conv1 = conv1
+        self.norm1 = nn.BatchNorm2d(in_channels)
+        self.relu1 = nn.ReLU(inplace=True)
+        self.conv2 = conv2
+        self.norm2 = nn.BatchNorm2d(in_channels)
         
-        # ReLU for after the addition (put outside to keep it non-inplace for the residual connection)
-        self.relu = nn.ReLU(inplace=True)
+        # ReLU for after the addition
+        self.relu_out = nn.ReLU(inplace=True)
     
     def forward(self, x):
-        return self.relu(x + self.main_path(x))
+        identity = x
+        
+        out = self.conv1(x)
+        out = self.norm1(out)
+        out = self.relu1(out)
+        
+        out = self.conv2(out)
+        out = self.norm2(out)
+        
+        out += identity
+        out = self.relu_out(out)
+        
+        return out
 
 
 class UNetDownWithResidual(nn.Module):
@@ -48,7 +58,8 @@ class UNetDownWithResidual(nn.Module):
             layers = [nn.Conv2d(in_channels, out_channels, kernel_size=4, stride=2, padding=1, bias=False)]
         
         if normalize:
-            layers.append(nn.InstanceNorm2d(out_channels))
+            # Use BatchNorm2d instead of InstanceNorm2d for better compatibility with small spatial dimensions
+            layers.append(nn.BatchNorm2d(out_channels))
         
         layers.append(nn.LeakyReLU(0.2, inplace=True))
         
@@ -59,8 +70,10 @@ class UNetDownWithResidual(nn.Module):
         
         # Add a residual block if enabled and channels match
         self.use_residual = use_residual and (in_channels == out_channels)
-        if self.use_residual:
+        if self.use_residual and out_channels > 64:  # Skip residual for bottom layers that are too small
             self.residual_block = ResidualBlock(out_channels, use_spectral_norm)
+        else:
+            self.use_residual = False
     
     def forward(self, x):
         x = self.model(x)
@@ -79,7 +92,7 @@ class UNetUpWithResidual(nn.Module):
         # Main upsampling path
         layers = [
             nn.ConvTranspose2d(in_channels, out_channels, kernel_size=4, stride=2, padding=1, bias=False),
-            nn.InstanceNorm2d(out_channels),
+            nn.BatchNorm2d(out_channels),  # Using BatchNorm instead of InstanceNorm
             nn.ReLU(inplace=True)
         ]
         
@@ -88,19 +101,22 @@ class UNetUpWithResidual(nn.Module):
         
         self.model = nn.Sequential(*layers)
         
-        # Add a residual block after concatenation
-        self.use_residual = use_residual
+        # Add a residual block after concatenation for larger feature maps only
+        self.use_residual = use_residual and out_channels >= 128  # Only use residual for larger feature maps
+        
         if self.use_residual:
+            # Add a 1x1 conv to match dimensions before the residual block
+            self.conv1x1 = nn.Conv2d(out_channels * 2, out_channels * 2, kernel_size=1, stride=1, padding=0)
             self.residual_block = ResidualBlock(out_channels * 2)  # *2 because of the concatenation
     
     def forward(self, x, skip_input):
         x = self.model(x)
         x = torch.cat((x, skip_input), 1)
+        
         if self.use_residual:
-            # We need to adapt the residual block for the concatenated tensor
-            # For simplicity, let's use a 1x1 conv to match dimensions before the residual block
-            # This is a common approach when adding residual connections to U-Net
+            x = self.conv1x1(x)
             x = self.residual_block(x)
+            
         return x
 
 
@@ -123,10 +139,10 @@ class ResidualGenerator(nn.Module):
         self.down7 = UNetDownWithResidual(512, 512, dropout=0.5, use_spectral_norm=use_spectral_norm)  # 2x2
         self.down8 = UNetDownWithResidual(512, 512, normalize=False, dropout=0.5, use_spectral_norm=use_spectral_norm, use_residual=False)  # 1x1
         
-        # Bridge with residual blocks - add more capacity at the bottleneck
+        # Simple bottleneck instead of residual blocks for 1x1 feature maps
         self.bridge = nn.Sequential(
-            ResidualBlock(512, use_spectral_norm),
-            ResidualBlock(512, use_spectral_norm)
+            nn.Conv2d(512, 512, kernel_size=1, stride=1, padding=0, bias=False),
+            nn.ReLU(inplace=True)
         )
         
         # Upsampling with residual connections
