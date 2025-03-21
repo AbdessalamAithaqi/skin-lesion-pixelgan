@@ -100,7 +100,7 @@ Example results comparing original images (left), masked images (middle), and ge
 
 ## Academic Context
 
-This project was developed as part of a coursework assignment for [COMP425] at [Concordia University]. The goal was to implement a GAN architecture to generate synthetic medical images and evaluate its effectiveness in improving downstream AI model performance.
+This project was developed as part of a coursework assignment for [COMP425](https://www.concordia.ca/academics/undergraduate/calendar/current/section-71-gina-cody-school-of-engineering-and-computer-science/section-71-70-department-of-computer-science-and-software-engineering/section-71-70-10-computer-science-and-software-engineering-courses.html) at [Concordia University](https://www.concordia.ca/). The goal was to implement a GAN architecture to generate synthetic medical images and evaluate its effectiveness in improving downstream AI model performance.
 
 ## Contributors
 
