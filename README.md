@@ -16,17 +16,26 @@ This project implements a PixelGAN (based on Pix2Pix architecture) to generate r
 ## Project Structure
 
 ```
-skin-lesion-pixelgan/
-├── data/               # Data directory (not tracked by git)
-│   ├── train/          # Training images
-│   └── test/           # Test images
-├── pixelgan_models/    # Saved model checkpoints
-├── pixelgan_outputs/   # Generated images
-├── models.py           # Model architecture definitions
-├── dataset.py          # Dataset loading and preprocessing
-├── train.py            # Training script
-├── generate.py         # Image generation script
-└── preprocess.py       # Data preprocessing utilities
+project_root/
+│── .venv/                   # Virtual environment (Python dependencies)
+│── data/                     # Data directory
+│   │── input_images/        # Your start images
+│   │── test/                # Test dataset (generated)
+│   │── train/               # Training dataset (generated)
+│── pixelgan_models/         # Saved model checkpoints
+│   │── 20250320_223547/     # Model version (generated)
+│── pixelgan_outputs/        # Generated images/output results
+│   │── 20250320_223547/     # Outputs for model version (generated)
+│   │── generated_final/     # Final output images (generated)
+│── .gitignore               # Git ignore file
+│── dataset.py               # Dataset processing script
+│── generate.py              # Image generation script (inference)
+│── LICENSE                  # License file
+│── models.py                # Defines the GAN model
+│── preprocess.py            # Preprocessing script for images
+│── README.md                # Documentation
+│── requirements.txt         # Dependencies
+│── train.py                 # Training script
 ```
 
 ## Requirements
@@ -80,7 +89,7 @@ python train.py --data_dir data --batch_size 16 --amp --n_epochs 100
 
 Generate synthetic images using the trained model:
 ```bash
-python generate.py --model_folder pixelgan_models\INSERT_MODEL_NUMBER --input_dir data/test --num_images 20 --output_dir pixelgan_outputs/generated_final
+python generate.py --model_folder pixelgan_models\INSERT_MODEL_VERSION --input_dir data/test --num_images 20 --output_dir pixelgan_outputs/generated_final
 ```
 
 ## Results
