@@ -98,7 +98,7 @@ This project was developed as part of a coursework assignment for [COMP425] at [
 - Aymane Aaquil
 - Abdessalam Ait Haqi
 - Alex Chneerov
-- Cameron
+- Cameron Shortt
 
 ## License
 
