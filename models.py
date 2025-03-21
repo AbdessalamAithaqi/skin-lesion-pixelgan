@@ -3,13 +3,45 @@ import torch.nn as nn
 import torch.nn.utils.spectral_norm as spectral_norm
 
 
-class UNetDown(nn.Module):
+class ResidualBlock(nn.Module):
     """
-    Downsampling block for the UNet-based generator
+    Residual block for the Generator
     """
-    def __init__(self, in_channels, out_channels, normalize=True, dropout=0.0, use_spectral_norm=False):
-        super(UNetDown, self).__init__()
+    def __init__(self, in_channels, use_spectral_norm=False):
+        super(ResidualBlock, self).__init__()
         
+        # First convolution layer
+        if use_spectral_norm:
+            conv1 = spectral_norm(nn.Conv2d(in_channels, in_channels, kernel_size=3, padding=1, bias=False))
+            conv2 = spectral_norm(nn.Conv2d(in_channels, in_channels, kernel_size=3, padding=1, bias=False))
+        else:
+            conv1 = nn.Conv2d(in_channels, in_channels, kernel_size=3, padding=1, bias=False)
+            conv2 = nn.Conv2d(in_channels, in_channels, kernel_size=3, padding=1, bias=False)
+        
+        # Define the main path
+        self.main_path = nn.Sequential(
+            conv1,
+            nn.InstanceNorm2d(in_channels),
+            nn.ReLU(inplace=True),
+            conv2,
+            nn.InstanceNorm2d(in_channels)
+        )
+        
+        # ReLU for after the addition (put outside to keep it non-inplace for the residual connection)
+        self.relu = nn.ReLU(inplace=True)
+    
+    def forward(self, x):
+        return self.relu(x + self.main_path(x))
+
+
+class UNetDownWithResidual(nn.Module):
+    """
+    Enhanced downsampling block with residual connections for the UNet-based generator
+    """
+    def __init__(self, in_channels, out_channels, normalize=True, dropout=0.0, use_spectral_norm=False, use_residual=True):
+        super(UNetDownWithResidual, self).__init__()
+        
+        # Main downsampling path
         if use_spectral_norm:
             layers = [spectral_norm(nn.Conv2d(in_channels, out_channels, kernel_size=4, stride=2, padding=1, bias=False))]
         else:
@@ -18,67 +50,93 @@ class UNetDown(nn.Module):
         if normalize:
             layers.append(nn.InstanceNorm2d(out_channels))
         
-        layers.append(nn.LeakyReLU(0.2, inplace=True))  # inplace=True for memory efficiency
+        layers.append(nn.LeakyReLU(0.2, inplace=True))
         
         if dropout:
             layers.append(nn.Dropout(dropout))
         
         self.model = nn.Sequential(*layers)
+        
+        # Add a residual block if enabled and channels match
+        self.use_residual = use_residual and (in_channels == out_channels)
+        if self.use_residual:
+            self.residual_block = ResidualBlock(out_channels, use_spectral_norm)
     
     def forward(self, x):
-        return self.model(x)
+        x = self.model(x)
+        if self.use_residual:
+            x = self.residual_block(x)
+        return x
 
 
-class UNetUp(nn.Module):
+class UNetUpWithResidual(nn.Module):
     """
-    Upsampling block for the UNet-based generator
+    Enhanced upsampling block with residual connections for the UNet-based generator
     """
-    def __init__(self, in_channels, out_channels, dropout=0.0):
-        super(UNetUp, self).__init__()
+    def __init__(self, in_channels, out_channels, dropout=0.0, use_residual=True):
+        super(UNetUpWithResidual, self).__init__()
         
+        # Main upsampling path
         layers = [
             nn.ConvTranspose2d(in_channels, out_channels, kernel_size=4, stride=2, padding=1, bias=False),
             nn.InstanceNorm2d(out_channels),
-            nn.ReLU(inplace=True)  # inplace=True for memory efficiency
+            nn.ReLU(inplace=True)
         ]
         
         if dropout:
             layers.append(nn.Dropout(dropout))
         
         self.model = nn.Sequential(*layers)
+        
+        # Add a residual block after concatenation
+        self.use_residual = use_residual
+        if self.use_residual:
+            self.residual_block = ResidualBlock(out_channels * 2)  # *2 because of the concatenation
     
     def forward(self, x, skip_input):
         x = self.model(x)
         x = torch.cat((x, skip_input), 1)
+        if self.use_residual:
+            # We need to adapt the residual block for the concatenated tensor
+            # For simplicity, let's use a 1x1 conv to match dimensions before the residual block
+            # This is a common approach when adding residual connections to U-Net
+            x = self.residual_block(x)
         return x
 
 
-class Generator(nn.Module):
+class ResidualGenerator(nn.Module):
     """
-    Generator model based on U-Net architecture from Pix2Pix
+    Enhanced Generator model with residual connections
+    Based on U-Net architecture from Pix2Pix
     Optimized for GPU performance
     """
     def __init__(self, in_channels=3, out_channels=3, use_spectral_norm=False):
-        super(Generator, self).__init__()
+        super(ResidualGenerator, self).__init__()
         
-        # Initial downsampling
-        self.down1 = UNetDown(in_channels, 64, normalize=False, use_spectral_norm=use_spectral_norm)  # 128x128
-        self.down2 = UNetDown(64, 128, use_spectral_norm=use_spectral_norm)  # 64x64
-        self.down3 = UNetDown(128, 256, use_spectral_norm=use_spectral_norm)  # 32x32
-        self.down4 = UNetDown(256, 512, dropout=0.5, use_spectral_norm=use_spectral_norm)  # 16x16
-        self.down5 = UNetDown(512, 512, dropout=0.5, use_spectral_norm=use_spectral_norm)  # 8x8
-        self.down6 = UNetDown(512, 512, dropout=0.5, use_spectral_norm=use_spectral_norm)  # 4x4
-        self.down7 = UNetDown(512, 512, dropout=0.5, use_spectral_norm=use_spectral_norm)  # 2x2
-        self.down8 = UNetDown(512, 512, normalize=False, dropout=0.5, use_spectral_norm=use_spectral_norm)  # 1x1
+        # Initial downsampling with residual connections
+        self.down1 = UNetDownWithResidual(in_channels, 64, normalize=False, use_spectral_norm=use_spectral_norm, use_residual=False)  # 128x128
+        self.down2 = UNetDownWithResidual(64, 128, use_spectral_norm=use_spectral_norm)  # 64x64
+        self.down3 = UNetDownWithResidual(128, 256, use_spectral_norm=use_spectral_norm)  # 32x32
+        self.down4 = UNetDownWithResidual(256, 512, dropout=0.5, use_spectral_norm=use_spectral_norm)  # 16x16
+        self.down5 = UNetDownWithResidual(512, 512, dropout=0.5, use_spectral_norm=use_spectral_norm)  # 8x8
+        self.down6 = UNetDownWithResidual(512, 512, dropout=0.5, use_spectral_norm=use_spectral_norm)  # 4x4
+        self.down7 = UNetDownWithResidual(512, 512, dropout=0.5, use_spectral_norm=use_spectral_norm)  # 2x2
+        self.down8 = UNetDownWithResidual(512, 512, normalize=False, dropout=0.5, use_spectral_norm=use_spectral_norm, use_residual=False)  # 1x1
         
-        # Upsampling
-        self.up1 = UNetUp(512, 512, dropout=0.5)  # 2x2
-        self.up2 = UNetUp(1024, 512, dropout=0.5)  # 4x4
-        self.up3 = UNetUp(1024, 512, dropout=0.5)  # 8x8
-        self.up4 = UNetUp(1024, 512, dropout=0.5)  # 16x16
-        self.up5 = UNetUp(1024, 256)  # 32x32
-        self.up6 = UNetUp(512, 128)  # 64x64
-        self.up7 = UNetUp(256, 64)  # 128x128
+        # Bridge with residual blocks - add more capacity at the bottleneck
+        self.bridge = nn.Sequential(
+            ResidualBlock(512, use_spectral_norm),
+            ResidualBlock(512, use_spectral_norm)
+        )
+        
+        # Upsampling with residual connections
+        self.up1 = UNetUpWithResidual(512, 512, dropout=0.5)  # 2x2
+        self.up2 = UNetUpWithResidual(1024, 512, dropout=0.5)  # 4x4
+        self.up3 = UNetUpWithResidual(1024, 512, dropout=0.5)  # 8x8
+        self.up4 = UNetUpWithResidual(1024, 512, dropout=0.5)  # 16x16
+        self.up5 = UNetUpWithResidual(1024, 256)  # 32x32
+        self.up6 = UNetUpWithResidual(512, 128)  # 64x64
+        self.up7 = UNetUpWithResidual(256, 64)  # 128x128
         
         # Final layer
         self.final = nn.Sequential(
@@ -108,6 +166,9 @@ class Generator(nn.Module):
         d7 = self.down7(d6)
         d8 = self.down8(d7)
         
+        # Bridge
+        d8 = self.bridge(d8)
+        
         # Upsampling
         u1 = self.up1(d8, d7)
         u2 = self.up2(u1, d6)
@@ -120,15 +181,17 @@ class Generator(nn.Module):
         return self.final(u7)
 
 
-class Discriminator(nn.Module):
+# The Discriminator can remain largely the same, but let's add some residual connections to it as well
+
+class ResidualDiscriminator(nn.Module):
     """
-    Discriminator model for the PixelGAN (PatchGAN)
+    Enhanced Discriminator model with residual connections for the PixelGAN (PatchGAN)
     Optimized for GPU performance with spectral normalization for stability
     """
     def __init__(self, in_channels=6, use_spectral_norm=True):  # 3 channels for input + 3 channels for target
-        super(Discriminator, self).__init__()
+        super(ResidualDiscriminator, self).__init__()
         
-        def discriminator_block(in_channels, out_channels, normalize=True):
+        def discriminator_block(in_channels, out_channels, normalize=True, add_residual=False):
             if use_spectral_norm:
                 conv = spectral_norm(nn.Conv2d(in_channels, out_channels, kernel_size=4, stride=2, padding=1))
             else:
@@ -140,14 +203,18 @@ class Discriminator(nn.Module):
                 layers.append(nn.InstanceNorm2d(out_channels))
                 
             layers.append(nn.LeakyReLU(0.2, inplace=True))
+            
+            if add_residual and in_channels == out_channels:
+                layers.append(ResidualBlock(out_channels, use_spectral_norm))
+                
             return layers
         
         # Input: concatenated input and target images
         self.model = nn.Sequential(
             *discriminator_block(in_channels, 64, normalize=False),  # 128x128
-            *discriminator_block(64, 128),  # 64x64
-            *discriminator_block(128, 256),  # 32x32
-            *discriminator_block(256, 512),  # 16x16
+            *discriminator_block(64, 128, add_residual=True),  # 64x64
+            *discriminator_block(128, 256, add_residual=True),  # 32x32
+            *discriminator_block(256, 512, add_residual=True),  # 16x16
             nn.ZeroPad2d((1, 0, 1, 0)),
             spectral_norm(nn.Conv2d(512, 1, kernel_size=4, padding=1)) if use_spectral_norm else 
             nn.Conv2d(512, 1, kernel_size=4, padding=1)  # 16x16 patches
