@@ -77,8 +77,10 @@ This project was developed as part of a coursework assignment for [COMP425] at [
 
 ## Contributors
 
-- [Your Name]
-- [Team Member Names]
+- Aymane Aaquil
+- Abdessalam Ait Haqi
+- Alex Chneerov
+- Cameron
 
 ## License
 
