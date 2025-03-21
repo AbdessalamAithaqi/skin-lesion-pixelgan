@@ -66,7 +66,7 @@ If CUDA is not available, ensure you have installed the correct PyTorch version 
 1. Place your skin lesion images in the `data/` directory
 2. Preprocess images:
 ```bash
-python preprocess.py --source_dir source_images --data_dir data
+python preprocess.py --source_dir .\data\input_images\ --data_dir data
 ```
 
 ### Training
@@ -95,10 +95,10 @@ This project was developed as part of a coursework assignment for [COMP425] at [
 
 ## Contributors
 
-- Aymane Aaquil
-- Abdessalam Ait Haqi
-- Alex Chneerov
-- Cameron Shortt
+- [Aymane Aaquil](https://github.com/aymaneaaquil)
+- [Abdessalam Ait Haqi](https://github.com/AbdessalamAithaqi)
+- [Alexander Chneerov](https://github.com/achneerov)
+- [Cameron Shortt](https://github.com/cameronsshortt)
 
 ## License
 

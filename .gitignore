@@ -74,6 +74,7 @@ venv.bak/
 data/train
 data/test
 pixelgan_outputs/
+pixelgan_models/
 
 # Allow specific images for documentation
 !docs/images/*.png
