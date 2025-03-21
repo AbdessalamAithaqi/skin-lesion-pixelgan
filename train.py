@@ -55,6 +55,7 @@ def train(args):
     
     # Initialize mixed precision training if using cuda
     scaler = GradScaler() if device.type == 'cuda' and args.amp else None
+    print(f"Mixed precision training: {'Enabled' if scaler is not None else 'Disabled'}")
     
     # Loss functions
     criterion_GAN = nn.MSELoss()
@@ -98,7 +99,7 @@ def train(args):
             
             if scaler is not None:
                 # Mixed precision training
-                with autocast():
+                with autocast(device_type='cuda'):
                     # Generate fake image
                     fake_B = generator(real_A)
                     
@@ -140,7 +141,7 @@ def train(args):
             
             if scaler is not None:
                 # Mixed precision training
-                with autocast():
+                with autocast(device_type='cuda'):
                     # Real loss
                     pred_real = discriminator(real_A, real_B)
                     loss_real = criterion_GAN(pred_real, valid)
