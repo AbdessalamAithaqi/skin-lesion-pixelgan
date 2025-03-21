@@ -73,14 +73,14 @@ python preprocess.py --source_dir .\data\input_images\ --data_dir data
 
 Train the PixelGAN model:
 ```bash
-python train.py --data_dir data --n_epochs 200 --batch_size 8
+python train.py --data_dir data --batch_size 16 --amp --n_epochs 100
 ```
 
 ### Generating Synthetic Images
 
 Generate synthetic images using the trained model:
 ```bash
-python generate.py --model_folder MODEL_TIMESTAMP --input_dir data/test --num_images 50
+python generate.py --model_folder pixelgan_models\INSERT_MODEL_NUMBER --input_dir data/test --num_images 20 --output_dir pixelgan_outputs/generated_final
 ```
 
 ## Results
