@@ -72,12 +72,6 @@ venv.bak/
 
 # Project specific
 pixelgan_outputs/
-*.pth
-*.pt
-*.png
-*.jpg
-*.jpeg
-*.h5
 
 # Allow specific images for documentation
 !docs/images/*.png
