@@ -2,7 +2,6 @@ import os
 import argparse
 import random
 import shutil
-from pathlib import Path
 import numpy as np
 from PIL import Image, ImageOps, ImageFilter
 import cv2
