@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torchvision.utils import save_image
-from torch.cuda.amp import GradScaler, autocast
+from torch.amp import GradScaler, autocast  # Updated import
 
 from models import Generator, Discriminator
 from dataset import get_data_loaders
@@ -51,7 +51,8 @@ def train(args):
     scheduler_D = optim.lr_scheduler.CosineAnnealingLR(optimizer_D, T_max=args.n_epochs, eta_min=args.lr/10)
     
     # Initialize mixed precision training if using cuda
-    scaler = GradScaler() if device.type == 'cuda' and args.amp else None
+    # Updated to new PyTorch syntax
+    scaler = GradScaler('cuda') if device.type == 'cuda' and args.amp else None
     
     # Loss functions
     criterion_GAN = nn.MSELoss()
@@ -94,8 +95,8 @@ def train(args):
             optimizer_G.zero_grad(set_to_none=True)  # Slightly more efficient
             
             if scaler is not None:
-                # Mixed precision training
-                with autocast():
+                # Mixed precision training - updated to new PyTorch syntax
+                with autocast('cuda'):
                     # Generate fake image
                     fake_B = generator(real_A)
                     
@@ -136,8 +137,8 @@ def train(args):
             optimizer_D.zero_grad(set_to_none=True)
             
             if scaler is not None:
-                # Mixed precision training
-                with autocast():
+                # Mixed precision training - updated to new PyTorch syntax
+                with autocast('cuda'):
                     # Real loss
                     pred_real = discriminator(real_A, real_B)
                     loss_real = criterion_GAN(pred_real, valid)
