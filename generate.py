@@ -7,30 +7,26 @@ from torchvision import transforms
 from torchvision.utils import save_image
 from PIL import Image
 
-# Import both original and residual models
-from models import Generator, ResidualGenerator
+# Import the residual generator only
+from models import ResidualGenerator
 from dataset import SkinLesionDataset
 
 
-def load_model(model_path, device, use_residual=True):
+def load_model(model_path, device):
     """
     Load a trained generator model
     
     Args:
         model_path (str): Path to the model file
         device (torch.device): Device to load the model to
-        use_residual (bool): Whether to use the residual generator model
         
     Returns:
         Generator: Loaded generator model
     """
-    if use_residual:
-        model = ResidualGenerator(in_channels=3, out_channels=3).to(device)
-        print("Using enhanced residual generator model")
-    else:
-        model = Generator(in_channels=3, out_channels=3).to(device)
-        print("Using original generator model")
-        
+    # Always use the residual generator model
+    model = ResidualGenerator(in_channels=3, out_channels=3).to(device)
+    print("Using enhanced residual generator model")
+    
     # Use weights_only=True to avoid security warnings
     model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
     model.eval()
@@ -171,10 +167,6 @@ def main():
     # Generation mode
     parser.add_argument('--raw_mode', action='store_true', help='Use raw images instead of dataset')
     
-    # Model type
-    parser.add_argument('--use_residual', action='store_true', help='Use the residual generator model')
-    parser.add_argument('--original_model', action='store_true', help='Use the original generator model')
-    
     args = parser.parse_args()
     
     # Validate arguments
@@ -202,12 +194,7 @@ def main():
     
     print(f"Loading model from {model_path}")
     
-    # Determine which model type to use
-    use_residual = not args.original_model
-    if args.use_residual:
-        use_residual = True
-    
-    generator = load_model(model_path, device, use_residual)
+    generator = load_model(model_path, device)
     
     # Generate images
     if args.raw_mode:
