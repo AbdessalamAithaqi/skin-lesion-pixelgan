@@ -71,7 +71,6 @@ env.bak/
 venv.bak/
 
 # Project specific
-data/
 pixelgan_outputs/
 *.pth
 *.pt
