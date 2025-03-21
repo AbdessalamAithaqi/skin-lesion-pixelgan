@@ -11,6 +11,7 @@ This project implements a PixelGAN (based on Pix2Pix architecture) to generate r
 - Train on limited datasets and expand them through GAN-based synthesis
 - Evaluate synthetic image quality through medical professional assessment
 - Improve downstream cancer detection AI performance
+- Leverages GPU acceleration (CUDA) for faster training and inference
 
 ## Project Structure
 
@@ -31,7 +32,9 @@ skin-lesion-pixelgan/
 ## Requirements
 
 - Python 3.8+
-- PyTorch 1.8+
+- PyTorch 2.5.1+ (CUDA 12.1)
+- opencv-python (for image processing)
+- CUDA-enabled GPU (NVIDIA RTX recommended)
 - torchvision
 - Pillow
 - numpy
@@ -40,6 +43,21 @@ You can install the required packages using:
 ```bash
 pip install -r requirements.txt
 ```
+
+### Leveraging GPU for Faster Training
+To install the GPU-accelerated version of PyTorch with CUDA 12.1 support, use:
+
+```bash
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+```
+
+To ensure PyTorch is using your GPU, run:
+```python
+import torch
+print(torch.cuda.is_available())  # Should return True
+print(torch.cuda.get_device_name(0))  # Should show your GPU name
+```
+If CUDA is not available, ensure you have installed the correct PyTorch version for your CUDA setup.
 
 ## Usage
 
