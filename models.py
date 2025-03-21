@@ -157,8 +157,10 @@ class Discriminator(nn.Module):
         self.apply(self._init_weights)
     
     def _init_weights(self, m):
-        if isinstance(m, nn.Conv2d) and not isinstance(m, nn.utils.spectral_norm.SpectralNorm):
-            nn.init.normal_(m.weight.data, 0.0, 0.02)
+        if isinstance(m, nn.Conv2d):
+            # Check if this Conv2d is not already wrapped by spectral_norm
+            if not hasattr(m, 'weight_orig'):
+                nn.init.normal_(m.weight.data, 0.0, 0.02)
     
     def forward(self, img_A, img_B):
         # Concatenate input and output image by channels
