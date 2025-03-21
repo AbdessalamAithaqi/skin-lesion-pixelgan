@@ -71,6 +71,8 @@ env.bak/
 venv.bak/
 
 # Project specific
+data/train
+data/test
 pixelgan_outputs/
 
 # Allow specific images for documentation
