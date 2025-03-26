@@ -94,7 +94,7 @@ def generate_mask(image, method='edge_detection'):
     return mask_img
 
 
-def split_dataset(source_dir, data_dir, test_split=0.2):
+def split_dataset(source_dir, data_dir, test_split=0.1):
     """
     Split the dataset into training and testing sets
     
