@@ -89,8 +89,8 @@ def train(args):
             real_B = batch['original'].to(device, non_blocking=True)  # Target (original)
             
             # Adversarial ground truths
-            valid = torch.ones((real_A.size(0), 1, 16, 16), device=device, requires_grad=False)
-            fake = torch.zeros((real_A.size(0), 1, 16, 16), device=device, requires_grad=False)
+            valid = torch.ones((real_A.size(0), 1, 8, 8), device=device, requires_grad=False)
+            fake = torch.zeros((real_A.size(0), 1, 8, 8), device=device, requires_grad=False)
             
             # ------------------
             #  Train Generator
