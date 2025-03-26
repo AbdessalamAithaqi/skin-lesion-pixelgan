@@ -82,7 +82,7 @@ python preprocess.py --source_dir .\data\input_images\ --data_dir data
 
 Train the PixelGAN model:
 ```bash
-python train.py --data_dir data --batch_size 16 --amp --n_epochs 100
+python train.py --data_dir data --batch_size 32 --amp --n_epochs 150 --img_size 128 --num_workers 8 --eval_freq 10 --save_freq 15
 ```
 
 ### Generating Synthetic Images

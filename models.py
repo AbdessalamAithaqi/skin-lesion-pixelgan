@@ -125,19 +125,19 @@ class ResidualGenerator(nn.Module):
     Enhanced Generator model with residual connections
     Based on U-Net architecture from Pix2Pix
     Optimized for GPU performance
+    Modified for 128x128 input images
     """
     def __init__(self, in_channels=3, out_channels=3, use_spectral_norm=False):
         super(ResidualGenerator, self).__init__()
         
         # Initial downsampling with residual connections
-        self.down1 = UNetDownWithResidual(in_channels, 64, normalize=False, use_spectral_norm=use_spectral_norm, use_residual=False)  # 128x128
-        self.down2 = UNetDownWithResidual(64, 128, use_spectral_norm=use_spectral_norm)  # 64x64
-        self.down3 = UNetDownWithResidual(128, 256, use_spectral_norm=use_spectral_norm)  # 32x32
-        self.down4 = UNetDownWithResidual(256, 512, dropout=0.5, use_spectral_norm=use_spectral_norm)  # 16x16
-        self.down5 = UNetDownWithResidual(512, 512, dropout=0.5, use_spectral_norm=use_spectral_norm)  # 8x8
-        self.down6 = UNetDownWithResidual(512, 512, dropout=0.5, use_spectral_norm=use_spectral_norm)  # 4x4
-        self.down7 = UNetDownWithResidual(512, 512, dropout=0.5, use_spectral_norm=use_spectral_norm)  # 2x2
-        self.down8 = UNetDownWithResidual(512, 512, normalize=False, dropout=0.5, use_spectral_norm=use_spectral_norm, use_residual=False)  # 1x1
+        self.down1 = UNetDownWithResidual(in_channels, 64, normalize=False, use_spectral_norm=use_spectral_norm, use_residual=False)  # 64x64
+        self.down2 = UNetDownWithResidual(64, 128, use_spectral_norm=use_spectral_norm)  # 32x32
+        self.down3 = UNetDownWithResidual(128, 256, use_spectral_norm=use_spectral_norm)  # 16x16
+        self.down4 = UNetDownWithResidual(256, 512, dropout=0.5, use_spectral_norm=use_spectral_norm)  # 8x8
+        self.down5 = UNetDownWithResidual(512, 512, dropout=0.5, use_spectral_norm=use_spectral_norm)  # 4x4
+        self.down6 = UNetDownWithResidual(512, 512, dropout=0.5, use_spectral_norm=use_spectral_norm)  # 2x2
+        self.down7 = UNetDownWithResidual(512, 512, normalize=False, dropout=0.5, use_spectral_norm=use_spectral_norm, use_residual=False)  # 1x1
         
         # Simple bottleneck instead of residual blocks for 1x1 feature maps
         self.bridge = nn.Sequential(
@@ -149,10 +149,9 @@ class ResidualGenerator(nn.Module):
         self.up1 = UNetUpWithResidual(512, 512, dropout=0.5)  # 2x2
         self.up2 = UNetUpWithResidual(1024, 512, dropout=0.5)  # 4x4
         self.up3 = UNetUpWithResidual(1024, 512, dropout=0.5)  # 8x8
-        self.up4 = UNetUpWithResidual(1024, 512, dropout=0.5)  # 16x16
-        self.up5 = UNetUpWithResidual(1024, 256)  # 32x32
-        self.up6 = UNetUpWithResidual(512, 128)  # 64x64
-        self.up7 = UNetUpWithResidual(256, 64)  # 128x128
+        self.up4 = UNetUpWithResidual(1024, 256)  # 16x16
+        self.up5 = UNetUpWithResidual(512, 128)  # 32x32
+        self.up6 = UNetUpWithResidual(256, 64)  # 64x64
         
         # Final layer
         self.final = nn.Sequential(
@@ -180,21 +179,19 @@ class ResidualGenerator(nn.Module):
         d5 = self.down5(d4)
         d6 = self.down6(d5)
         d7 = self.down7(d6)
-        d8 = self.down8(d7)
         
         # Bridge
-        d8 = self.bridge(d8)
+        d7 = self.bridge(d7)
         
         # Upsampling
-        u1 = self.up1(d8, d7)
-        u2 = self.up2(u1, d6)
-        u3 = self.up3(u2, d5)
-        u4 = self.up4(u3, d4)
-        u5 = self.up5(u4, d3)
-        u6 = self.up6(u5, d2)
-        u7 = self.up7(u6, d1)
+        u1 = self.up1(d7, d6)
+        u2 = self.up2(u1, d5)
+        u3 = self.up3(u2, d4)
+        u4 = self.up4(u3, d3)
+        u5 = self.up5(u4, d2)
+        u6 = self.up6(u5, d1)
         
-        return self.final(u7)
+        return self.final(u6)
 
 
 # The Discriminator can remain largely the same, but let's add some residual connections to it as well
