@@ -7,7 +7,8 @@ from torchvision import transforms
 from torchvision.utils import save_image
 from PIL import Image
 
-from models import Generator
+# Import the residual generator only
+from models import ResidualGenerator
 from dataset import SkinLesionDataset
 
 
@@ -22,7 +23,10 @@ def load_model(model_path, device):
     Returns:
         Generator: Loaded generator model
     """
-    model = Generator(in_channels=3, out_channels=3).to(device)
+    # Always use the residual generator model
+    model = ResidualGenerator(in_channels=3, out_channels=3).to(device)
+    print("Using enhanced residual generator model")
+    
     # Use weights_only=True to avoid security warnings
     model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
     model.eval()
@@ -189,6 +193,7 @@ def main():
         model_path = model_files[-1]  # Use the latest one
     
     print(f"Loading model from {model_path}")
+    
     generator = load_model(model_path, device)
     
     # Generate images

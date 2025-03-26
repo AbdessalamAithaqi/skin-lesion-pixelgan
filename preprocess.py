@@ -94,7 +94,7 @@ def generate_mask(image, method='edge_detection'):
     return mask_img
 
 
-def split_dataset(source_dir, data_dir, test_split=0.2):
+def split_dataset(source_dir, data_dir, test_split=0.1):
     """
     Split the dataset into training and testing sets
     
@@ -161,7 +161,7 @@ def main():
     parser = argparse.ArgumentParser(description='Preprocess skin lesion images')
     parser.add_argument('--source_dir', type=str, required=True, help='Directory with source images')
     parser.add_argument('--data_dir', type=str, required=True, help='Directory to store processed data')
-    parser.add_argument('--test_split', type=float, default=0.2, help='Proportion of data to use for testing')
+    parser.add_argument('--test_split', type=float, default=0.1, help='Proportion of data to use for testing')
     
     args = parser.parse_args()
     

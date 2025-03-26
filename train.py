@@ -8,9 +8,10 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torchvision.utils import save_image
-from torch.amp import GradScaler, autocast  # Updated import
+from torch.amp import GradScaler, autocast
 
-from models import Generator, Discriminator
+# Import our new residual models
+from models import ResidualGenerator, ResidualDiscriminator
 from dataset import get_data_loaders
 
 
@@ -38,9 +39,11 @@ def train(args):
     else:
         print("Using CPU")
     
-    # Initialize models
-    generator = Generator(in_channels=3, out_channels=3).to(device)
-    discriminator = Discriminator(in_channels=6).to(device)
+    # Initialize models with residual connections
+    generator = ResidualGenerator(in_channels=3, out_channels=3).to(device)
+    discriminator = ResidualDiscriminator(in_channels=6).to(device)
+    
+    print("Using enhanced model with residual connections")
     
     # Initialize optimizers
     optimizer_G = optim.Adam(generator.parameters(), lr=args.lr, betas=(args.beta1, 0.999))
@@ -51,8 +54,8 @@ def train(args):
     scheduler_D = optim.lr_scheduler.CosineAnnealingLR(optimizer_D, T_max=args.n_epochs, eta_min=args.lr/10)
     
     # Initialize mixed precision training if using cuda
-    # Updated to new PyTorch syntax
-    scaler = GradScaler('cuda') if device.type == 'cuda' and args.amp else None
+    scaler = GradScaler() if device.type == 'cuda' and args.amp else None
+    print(f"Mixed precision training: {'Enabled' if scaler is not None else 'Disabled'}")
     
     # Loss functions
     criterion_GAN = nn.MSELoss()
@@ -86,8 +89,8 @@ def train(args):
             real_B = batch['original'].to(device, non_blocking=True)  # Target (original)
             
             # Adversarial ground truths
-            valid = torch.ones((real_A.size(0), 1, 16, 16), device=device, requires_grad=False)
-            fake = torch.zeros((real_A.size(0), 1, 16, 16), device=device, requires_grad=False)
+            valid = torch.ones((real_A.size(0), 1, 8, 8), device=device, requires_grad=False)
+            fake = torch.zeros((real_A.size(0), 1, 8, 8), device=device, requires_grad=False)
             
             # ------------------
             #  Train Generator
@@ -95,8 +98,8 @@ def train(args):
             optimizer_G.zero_grad(set_to_none=True)  # Slightly more efficient
             
             if scaler is not None:
-                # Mixed precision training - updated to new PyTorch syntax
-                with autocast('cuda'):
+                # Mixed precision training
+                with autocast(device_type='cuda'):
                     # Generate fake image
                     fake_B = generator(real_A)
                     
@@ -137,8 +140,8 @@ def train(args):
             optimizer_D.zero_grad(set_to_none=True)
             
             if scaler is not None:
-                # Mixed precision training - updated to new PyTorch syntax
-                with autocast('cuda'):
+                # Mixed precision training
+                with autocast(device_type='cuda'):
                     # Real loss
                     pred_real = discriminator(real_A, real_B)
                     loss_real = criterion_GAN(pred_real, valid)
